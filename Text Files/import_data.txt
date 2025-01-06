@@ -1,0 +1,71 @@
+//LOAD NODE TABLES
+
+//Load player.csv file
+LOAD CSV WITH HEADERS FROM 'file:///player.csv' AS row
+CREATE (p:Player {
+playerID: TOINTEGER(row.`Player id`),
+player: row.Player,
+position: row.Position,
+number: row.Number,
+DOB: row.`D.O.B`,
+day: row.Day,
+month: row.Month,
+year: row.Year,
+age: TOINTEGER(row.Age),
+height: TOINTEGER(row.`Height (cm)`),
+caps: TOINTEGER(row.Caps),
+internationalGoals: TOINTEGER(row.`International goals`),
+playsInHomeCountry: CASE row.`Plays in home country?`
+WHEN 'TRUE' THEN true // convert to boolean datatype
+WHEN 'FALSE' THEN false
+ELSE NULL END
+})
+
+
+//Load club.csv file
+LOAD CSV WITH HEADERS FROM 'file:///club.csv' AS row
+CREATE (cl:Club {
+clubID: TOINTEGER(row.`Club ID`),
+club: row.Club
+})
+
+
+//Load club_country.csv file
+LOAD CSV WITH HEADERS FROM 'file:///club_country.csv' AS row
+CREATE (cc:ClubCountry {
+clubCountryID: toInteger(row.`Club Country ID`),
+`club_country`: row.`Club (country)`
+})
+
+
+
+//Load country.csv file
+LOAD CSV WITH HEADERS FROM 'file:///country.csv' AS row
+CREATE (nation:Country {
+    countryID: toInteger(row.`Country ID`),
+    country: row.Country
+})
+
+
+
+
+//LOAD RELATIONSHIP TABLES
+
+//Load rel_based_in.csv file
+LOAD CSV WITH HEADERS FROM 'file:///rel_based_in.csv' AS row
+MATCH (cl:Club {clubID: toInteger(row.`Club ID`)})
+MATCH (cc:ClubCountry {club_country: row.`Club (country)`})
+CREATE (cl)-[:BASED_IN]->(cc)
+
+
+//Load rel_represents.csv file
+LOAD CSV WITH HEADERS FROM 'file:///rel_represents.csv' AS row
+MATCH (p:Player {playerID: toInteger(row.`Player id`)})
+MATCH (nation:Country {country: row.Country})
+CREATE (p)-[:REPRESENTS]->(nation)
+
+//Load rel_plays_for.csv file
+LOAD CSV WITH HEADERS FROM 'file:///rel_plays_for.csv' AS row
+MATCH (p:Player {playerID: toInteger(row.`Player id`)})
+MATCH (cl:Club {club: row.`Club`})
+CREATE (p)-[:PLAYS_FOR]->(cl)

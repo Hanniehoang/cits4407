@@ -1,0 +1,115 @@
+//Query 1: What is the jersy number of the player with <a specific player id>?
+MATCH (p:Player {playerID: 229397})
+RETURN p.number AS jerseyNumber
+
+//Query 2: Which clubs are based in <a specific country>?
+MATCH (cl:Club)-[:BASED_IN]->(cc:ClubCountry {club_country: "Australia"})
+RETURN cl.club AS clubName
+
+//Query 3: Which club does <a specific player>  play for?
+MATCH (p:Player {player: 'Lionel MESSI'})-[r:PLAYS_FOR]->(cl:Club)
+RETURN cl.club AS club
+
+//Query 4: How old is <a specific player>?
+MATCH (p:Player {player: 'Lionel MESSI'})
+RETURN p.age AS age
+
+//Query 5: In which country is the club that <a specific player> plays for?
+MATCH (p:Player {player: 'Lionel MESSI'})-[:PLAYS_FOR]->(cl:Club)-[:BASED_IN]->(cc:ClubCountry)
+RETURN cc.club_country AS Country
+
+//Query 6: Find a club that has players from <a specific country>.
+MATCH (p:Player)-[:REPRESENTS]->(c:Country {country: 'Australia'})
+MATCH (p)-[:PLAYS_FOR]->(cl:Club)
+RETURN DISTINCT cl.club AS clubs
+
+//Query 7:Find all players play at <a specific club>, returning in ascending orders of age.
+MATCH (p:Player)-[:PLAYS_FOR]->(cl:Club {club: 'Melbourne Victory FC'})
+RETURN p.player AS player, p.age AS age
+ORDER BY p.age ASC
+
+//Query 8: Find all <a specific position> players in the national team of <a specific country>, returning in descending order of caps.
+MATCH (p:Player {position: "Forward"})-[:REPRESENTS]->(nation:Country {country: "Argentina"})
+RETURN p.player AS playerName, p.caps AS caps
+ORDER BY p.caps DESC
+
+//Query 9: Find all players born in <a specific year> and in national team of <a specific country>, returning in descending order of caps.
+MATCH (p:Player {year: "1987"})-[:REPRESENTS]->(nation:Country {country: "Argentina"})
+RETURN p.player AS playerName, p.caps AS caps
+ORDER BY p.caps DESC
+
+//Query 10: Find the players that belongs to the same club in national team of <a specific country>, returning in descending order of international goals.
+MATCH (p:Player)-[:REPRESENTS]->(nation:Country {country: "Argentina"})
+MATCH (p)-[:PLAYS_FOR]->(cl:Club)
+RETURN p.player AS playerName, p.internationalGoals AS goals
+ORDER BY p.internationalGoals DESC
+
+//Query 11: Count how many players are born in <a specific year>.
+MATCH (p:Player {year: '1987'})
+RETURN COUNT(p) AS playerCount
+
+//Query 12: Which age has the highest participation in the 2014 FIFA World Cup?
+MATCH (p:Player)
+RETURN p.age AS age, COUNT(p) AS participation
+ORDER BY participation DESC
+LIMIT 1
+
+//Query 13: Find the path with a length of 2 or 3 between <two specific clubs>.
+MATCH (club1:Club {club: 'Swindon Town FC'})-[:BASED_IN]->(cc:ClubCountry {club_country: 'England'}),
+(club2:Club {club: 'Chelsea FC'})-[:BASED_IN]->(cc)
+WITH club1, club2
+MATCH path = (club1)-[:BASED_IN|REPRESENTS|PLAYS_FOR*2..3]-(club2)
+RETURN path
+
+//Query 14: Find the top 5 countries with players who have the highest average number of international goals. Return the countries and their average international goals in descending order.
+
+MATCH (p:Player)-[:REPRESENTS]->(nation:Country)
+WITH nation.country AS country, toInteger(AVG(p.internationalGoals)) AS avgGoals  // convert float to integer
+RETURN country, avgGoals
+ORDER BY avgGoals DESC
+LIMIT 5
+
+//Query 15: (CITS5504 only) Identify pairs of players from the same national team who play in different positions but have the closest number of caps. Return these pairs along with their positions and the difference in caps.
+
+* Assumption 1: We assume that the closest number of caps is 0 which means the players have the same number of caps. 
+
+MATCH (p1:Player)-[:REPRESENTS]->(nation:Country)<-[:REPRESENTS]-(p2:Player)
+WHERE p1.position <> p2.position AND p1.playerID < p2.playerID
+WITH p1, p2, ABS(p1.caps - p2.caps) AS capDifference
+WITH min(capDifference) AS minCapDifference
+MATCH (p1:Player)-[:REPRESENTS]->(nation:Country)<-[:REPRESENTS]-(p2:Player)
+WHERE p1.position <> p2.position AND p1.playerID < p2.playerID
+WITH p1, p2, ABS(p1.caps - p2.caps) AS capDifference
+WHERE capDifference = minCapDifference
+RETURN p1.player AS player1, p1.position AS position1, p1.caps AS caps1, p2.player AS player2, p2.position AS position2, p2.caps AS caps2, capDifference
+
+* Assumption 2: In the case that the closest number of caps is 1, which is the minimum difference of caps of the two players in the same national team when they have different number of caps. 
+
+MATCH (p1:Player)-[:REPRESENTS]->(nation:Country)<-[:REPRESENTS]-(p2:Player)
+WHERE p1.position <> p2.position AND p1.playerID < p2.playerID AND p1.caps <> p2.caps         // caps are different at 1
+WITH p1, p2, ABS(p1.caps - p2.caps) AS capDifference
+WITH min(capDifference) AS minCapDifference
+MATCH (p1:Player)-[:REPRESENTS]->(nation:Country)<-[:REPRESENTS]-(p2:Player)
+WHERE p1.position <> p2.position AND p1.playerID < p2.playerID
+WITH p1, p2, ABS(p1.caps - p2.caps) AS capDifference
+WHERE capDifference = minCapDifference
+RETURN p1.player AS player1, p1.position AS position1, p1.caps AS caps1, p2.player AS player2, p2.position AS position2, p2.caps AS caps2, capDifference
+
+
+//Self-designed queries
+
+//Query 16.1 Find the player with the highest number of caps in Australia.
+MATCH (p:Player)-[:REPRESENTS]->(nation:Country {country: "Australia"})
+RETURN p.player AS playerName, p.caps AS caps
+ORDER BY p.caps DESC
+LIMIT 1
+
+//Query 16.2 List all players who play for clubs in their home country.
+MATCH (p:Player)-[:PLAYS_FOR]->(cl:Club)-[:BASED_IN]->(cc:ClubCountry)
+WHERE p.playsInHomeCountry = true
+RETURN p.player, cl.club, cc.club_country
+
+//Query 16.3: Find the average height of players in each national team, returning in descending order of average height. 
+MATCH (p:Player)-[:REPRESENTS]->(nation:Country)
+RETURN nation.country AS country, TOINTEGER(AVG(p.height)) AS avgHeight
+ORDER BY avgHeight DESC
